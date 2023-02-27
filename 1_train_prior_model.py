@@ -12,7 +12,7 @@ from MCMG_utils.Optim import ScheduledOptim
 from MCMG_utils.early_stop.pytorchtools import EarlyStopping
 from generate_prior_model_dataset import Generate_Prior_Data
 from hyper import prior_hyper as hy
-
+load_pretrain_model = hy.need_load_pre_train
 def train_prior():
 
     """Trains the Prior decodertf"""
@@ -37,6 +37,19 @@ def train_prior():
     Prior = transformer_RL(voc, hy.d_model, hy.nhead, hy.num_decoder_layers,  #Prior is a object
                            hy.dim_feedforward, hy.max_seq_length,
                            hy.pos_dropout, hy.trans_dropout,hy.device)
+
+    if load_pretrain_model:
+        try:
+            if torch.cuda.is_available():
+                # Prior.decodertf.load_state_dict(torch.load(load_prior_model_from, map_location=hy.map_location))
+                Prior.decodertf.load_state_dict(torch.load(hy.load_pretrain_path))
+            else:
+                Prior.decodertf.load_state_dict(
+                    torch.load(hy.load_pretrain_path, map_location=lambda storage, loc: storage))
+        except:
+            print('You have not pro_trained model, but you want to load it.')
+
+    Prior.decodertf.to(hy.device)
 
     optim = ScheduledOptim(
         Adam(Prior.decodertf.parameters(), betas=(0.9, 0.98), eps=1e-09),
@@ -111,8 +124,6 @@ def train(train_data, valid_data, model, optim, num_epochs,save_prior_path):
             torch.save(model.decodertf.state_dict(), save_prior_path)
         print(f'Val Loss: {val_loss}')
     return train_losses, val_losses
-
-
 
 def validate(valid_data, model):
     # pbar = tqdm(total=len(iter(valid_loader)), leave=False)

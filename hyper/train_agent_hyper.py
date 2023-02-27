@@ -3,12 +3,12 @@ import os
 import torch
 
 you_chosen_con = ['active', 'logp', 'sa']
-you_chosen_good_threshold = [['>= 0.5'], ['>=4', 'and', '<6'], ['<=3', 'or', '>=8']]
-you_refused_bad_threshold = [['<0.2'],['<2', 'or','>=8'],['>5','and', '<6' ]]
+you_chosen_good_threshold = [['>= 0.5'], ['>=4', 'and', '<6'], ['<=4']]
+you_refused_bad_threshold = [['<0.2'],['<2', 'or','>=8'],['>5']]
 init_from_file="data/Voc_RE1"  # voc file
 len_con = len(you_chosen_con)
 need_external_qasa_model=False
-external_qasa_model_dict= None #{'name':"path"}
+external_qasa_model_dict=None
 
 def generate_special_token():
     special_token = ['EOS', 'GO']
@@ -18,13 +18,14 @@ def generate_special_token():
             special_token.append(des + con)
     return special_token
 special_token = generate_special_token()
+good_token_list = ['good_'+tok for tok in you_chosen_con]
 n_steps = 8000
 batch_size = 128
-sigma = 0.60
+sigma = 60
 learning_rate = 0.0001
 max_length = 140
-device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
-map_location={'cuda:2': 'cuda:2'}
+device = torch.device('cuda:3' if torch.cuda.is_available() else 'cpu')
+map_location={'cuda:3': 'cuda:3'}
 restore_prior_from = 'save_rnn_model/rnn_model.ckpt'
 restore_agent_from = 'save_rnn_model/rnn_model.ckpt'
 

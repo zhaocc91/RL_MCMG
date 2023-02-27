@@ -7,12 +7,12 @@ def Variable(tensor):
        numpy arrays directly and automatically assigns it to
        the GPU. Be aware in case some operations are better
        left to the CPU."""
-    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    #device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
 
     if isinstance(tensor, np.ndarray):
         tensor = torch.from_numpy(tensor)
-    if torch.cuda.is_available():
-        return torch.autograd.Variable(tensor).to(device)
+    #if torch.cuda.is_available():
+    #    return torch.autograd.Variable(tensor).to(device)
     return torch.autograd.Variable(tensor)
 
 def decrease_learning_rate(optimizer, decrease_by=0.01):
@@ -41,6 +41,6 @@ def unique(arr):
     arr = arr.cpu().numpy()
     arr_ = np.ascontiguousarray(arr).view(np.dtype((np.void, arr.dtype.itemsize * arr.shape[1])))
     _, idxs = np.unique(arr_, return_index=True)
-    if torch.cuda.is_available():
-        return torch.LongTensor(np.sort(idxs)).cuda()
+    #if torch.cuda.is_available():
+    #    return torch.LongTensor(np.sort(idxs)).cuda()
     return torch.LongTensor(np.sort(idxs))

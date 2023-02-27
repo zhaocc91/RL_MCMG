@@ -3,7 +3,7 @@ import numpy as np
 # this should be replaced by other method
 from upload_external_model import Get_External_Models
 from hyper import prior_hyper as hy
-
+from MCMG_utils.data_structs import construct_vocabulary
 class Generate_Prior_Data():
 
     def __init__(self):
@@ -34,6 +34,8 @@ class Generate_Prior_Data():
 
         con_in_file = all_data.columns.values
         all_smiles = list(all_data.loc[:, "SMILES"])
+        construct_vocabulary(all_smiles)
+        print('i have rewritten vocabulary ')
         con_data_ok = [con for con in self.you_chosen_con if con in con_in_file]
         con_data_need_predict = [con for con in self.you_chosen_con if con not in con_in_file]
         data_dict = {'SMILES': all_smiles}
@@ -104,4 +106,5 @@ if __name__ == "__main__":
     t_d, v_d =  gd.rewrite_input_data()
     print(t_d)
     print(v_d)
+
 

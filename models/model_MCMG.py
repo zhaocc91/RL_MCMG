@@ -115,14 +115,17 @@ class transformer_RL():
                                          currently used.
         """
         batch_size, seq_length = target.size()
-
+        target = target.to(self.device)
         # print(self.voc.vocab)
         # print(self.voc.vocab['EOS'])
 
-        start_token = Variable(torch.zeros(batch_size, 1).long())
+        start_token = Variable(torch.zeros(batch_size, 1).long()).to(self.device)
+        #start_token = Variable(torch.zeros(batch_size, 1).long())
         start_token[:] = self.voc.vocab['GO']
         # split train and target and con_token
         con_token = target[:, 0:len_con]
+        #print('start_token',start_token.device)
+        #print('target',target.device)
         x = torch.cat((start_token, target[:, len_con:-1]), 1)
         y_target = target[:, len_con:].contiguous().view(-1)
         '''
@@ -137,9 +140,6 @@ class transformer_RL():
         '''
         # 去掉token长度
         seq_length = seq_length - len(con_token[0])
-
-        # log_probs = Variable(torch.zeros(batch_size))
-        # entropy = Variable(torch.zeros(batch_size))
 
         logits = Prior_train_forward(self.decodertf, x, con_token,self.device)
 
@@ -174,20 +174,20 @@ class transformer_RL():
        """
 
         # conditional token
-        con_token_list = Variable(self.voc.encode(con_token_list))
+        con_token_list = Variable(self.voc.encode(con_token_list)).to(self.device)
 
-        con_tokens = Variable(torch.zeros(batch_size, len(con_token_list)).long())
+        con_tokens = Variable(torch.zeros(batch_size, len(con_token_list)).long()).to(self.device)
 
         for ind, token in enumerate(con_token_list):
             con_tokens[:, ind] = token
 
-        start_token = Variable(torch.zeros(batch_size, 1).long())
+        start_token = Variable(torch.zeros(batch_size, 1).long()).to(self.device)
         start_token[:] = self.voc.vocab['GO']
         input_vector = start_token
         # print(batch_size)
 
         sequences = start_token
-        log_probs = Variable(torch.zeros(batch_size))
+        log_probs = Variable(torch.zeros(batch_size)).to(self.device)
         # log_probs1 = Variable(torch.zeros(batch_size))
 
         finished = torch.zeros(batch_size).byte()
@@ -242,15 +242,15 @@ class transformer_RL():
                                        currently used.
        """
         # conditional token
-        con_token_list = Variable(self.voc.encode(con_token_list))
+        con_token_list = Variable(self.voc.encode(con_token_list)).to(self.device)
 
-        con_tokens = Variable(torch.zeros(batch_size, len(con_token_list)).long())
+        con_tokens = Variable(torch.zeros(batch_size, len(con_token_list)).long()).to(self.device)
 
         for ind, token in enumerate(con_token_list):
             con_tokens[:,ind] = token
 
 
-        start_token = Variable(torch.zeros(batch_size, 1).long())
+        start_token = Variable(torch.zeros(batch_size, 1).long()).to(self.device)
 
         start_token[:] = self.voc.vocab['GO']
 
@@ -340,6 +340,6 @@ def NLLLoss(inputs, targets, device):
         target_expanded = torch.zeros(inputs.size())
 
     target_expanded.scatter_(1, targets.contiguous().view(-1, 1).data, 1.0)
-    loss = Variable(target_expanded) * inputs
+    loss = (Variable(target_expanded).to(device)) * inputs
     loss = torch.sum(loss, 1)
     return loss

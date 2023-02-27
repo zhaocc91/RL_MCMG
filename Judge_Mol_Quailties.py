@@ -56,8 +56,8 @@ class Judge_Mol_Scores():
 
         # line part
         if ('and' in good_thre_val) and ('or' in bad_thre_val): # shape:__/-\__
-            print('good_thre_val',good_thre_val)
-            print('bad_thre_val',bad_thre_val)
+            #print('good_thre_val',good_thre_val)
+            #print('bad_thre_val',bad_thre_val)
             p00 = self.extract_num_from_str(good_thre_val[0])
             p01 = self.extract_num_from_str(good_thre_val[2])
             p10 = self.extract_num_from_str(bad_thre_val[0])
@@ -76,7 +76,7 @@ class Judge_Mol_Scores():
 
         elif 'and' not in good_thre_val:  # shape: __/-- or --\__
             p0 = self.extract_num_from_str(good_thre_val[0])
-            p1 = self.extract_num_from_str(bad_thre_val[2])
+            p1 = self.extract_num_from_str(bad_thre_val[0])
             #points = [[p0],
             #          [p1]]
             if p0 > p1: # shape __/--
@@ -114,7 +114,7 @@ class Judge_Mol_Scores():
                 values = []
                 get_models = Get_External_Models()
                 get_models.smiles_s = all_smiles
-                print('cin_p',con_p)
+                #print('cin_p',con_p)
                 my_models = get_models.get_need_model([con_p],hy.need_external_qasa_model,hy.external_qasa_model_dict)
                 con_values = list(my_models.values())[0]
                 index = self.you_chosen_con.index(con_p)

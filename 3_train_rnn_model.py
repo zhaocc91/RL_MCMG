@@ -30,7 +30,7 @@ def train_middle(train_data=hy.train_data, save_model=hy.save_model_path):
                       collate_fn=MolData.collate_fn)
 
     Prior = RNN(voc,hy.device)
-
+    print('the device of rnn model is',Prior.device)
     loss_file = hy.save_loss_path
     optimizer = torch.optim.Adam(Prior.rnn.parameters(), lr = hy.learning_rate)
     for epoch in range(0, hy.epochs):
@@ -51,12 +51,12 @@ def train_middle(train_data=hy.train_data, save_model=hy.save_model_path):
             optimizer.step()
               
             # Every 500 steps we decrease learning rate and print some information
-            if step % 5 == 0 and step != 0:
+            if step % 500 == 0 and step != 0:
                 decrease_learning_rate(optimizer, decrease_by=0.03)
                 tqdm.write("*" * 50)
                 print(loss.cpu().data)
                 tqdm.write("Epoch {:3d}   step {:3d}    loss: {:5.2f}\n".format(epoch, step, loss.cpu().data))
-                seqs, likelihood, _ = Prior.sample(128)
+                seqs, likelihood, _ = Prior.sample(128,hy.max_length,hy.token_list)
                 valid = 0
                 for i, seq in enumerate(seqs.cpu().numpy()):
                     smile = voc.decode(seq)

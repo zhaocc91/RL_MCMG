@@ -366,7 +366,7 @@ def construct_vocabulary(smiles_list):
                 [add_chars.add(unit) for unit in chars]
 
     print("Number of characters: {}".format(len(add_chars)))
-    with open('data/Voc_RE', 'w') as f:
+    with open('data/Voc_RE1', 'w') as f:
         for char in add_chars:
             f.write(char + "\n")
     return add_chars

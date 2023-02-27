@@ -25,7 +25,8 @@ class MultiGRU(nn.Module):
 
     def forward(self, x, h):
         x = self.embedding(x)
-        h_out = Variable(torch.zeros(h.size()))
+        #h_out = Variable(torch.zeros(h.size()))
+        h_out = torch.zeros(h.size())
         x = h_out[0] = self.gru_1(x, h[0])
         x = h_out[1] = self.gru_2(x, h[1])
         x = h_out[2] = self.gru_3(x, h[2])
@@ -38,7 +39,7 @@ class MultiGRU(nn.Module):
         h_i2 = self.embedding_zcc(con_token)
         h_i = torch.stack((h_i0,h_i1,h_i2),dim =0)
         h_i = torch.sum(h_i,dim=2)
-        return Variable(h_i)
+        return h_i
     #'''
 
 
@@ -68,11 +69,12 @@ class RNN():
                 entropy: (batch_size) The entropies for the sequences. Not
                                       currently used.
         """
+        target = target.to(self.device)
         batch_size, seq_length = target.size()
 
-        start_token = Variable(torch.zeros(batch_size, 1).long())
+        start_token = Variable(torch.zeros(batch_size, 1).long()).to(self.device)
         start_token[:] = self.voc.vocab['GO']
-        x = torch.cat((start_token, target[:, con_len:-1]), 1)
+        x = torch.cat((start_token, target[:, con_len:-1]), 1).to(self.device)
         con_token = target[:, 0:con_len]
         '''
         print('target',target)  # 66 len
@@ -89,25 +91,27 @@ class RNN():
         print('con_token:',con_token)
         '''
         #h = self.rnn.init_h(batch_size)
-        h = self.rnn.init_h_zcc(con_token)
+        h = self.rnn.init_h_zcc(con_token).to(self.device)
         y_target = target[:, con_len:]
-        log_probs = Variable(torch.zeros(batch_size))
+        log_probs = Variable(torch.zeros(batch_size)).to(self.device)
         # entropy = Variable(torch.zeros(batch_size))
         seq_length = seq_length - con_len
         #print('seq_length',seq_length)
         #print('x_size',x.size())
         for step in range(seq_length):
             #print('rnn step is',step)
-            #print('x[:, step]',x[:, step])
-            #print('h_size',h.size())
+            #print('x[:, step]',x[:, step].device)
+            #print('h_size',h.device)
             logits, h = self.rnn(x[:, step], h)
+            logits = logits.to(self.device)
+            h = h.to(self.device)
             log_prob = F.log_softmax(logits)
             #prob = F.softmax(logits)
             log_probs += NLLLoss(log_prob, y_target[:,step],self.device)
             # entropy += -torch.sum((log_prob * prob), 1)
         return log_probs
 
-    def sample(self, batch_size, max_length=140):
+    def sample(self, batch_size, max_length=140,token_list=[]):
         """
             Sample a batch of sequences
 
@@ -121,23 +125,34 @@ class RNN():
             entropy: (batch_size) The entropies for the sequences. Not
                                     currently used.
         """
-        start_token = Variable(torch.zeros(batch_size).long())
+        if len(token_list)>0:
+            con_token = []
+            for token in token_list:
+                con_token.append(self.voc.vocab[token])
+            con_token = torch.tensor(con_token).long().to(self.device)
+            con_token = con_token.expand(batch_size,-1)
+            h = self.rnn.init_h_zcc(con_token)
+        else:
+            h = self.rnn.init_h(batch_size)
+        h = h.to(self.device)
+        start_token = Variable(torch.zeros(batch_size).long()).to(self.device)
         start_token[:] = self.voc.vocab['GO']
-        h = self.rnn.init_h(batch_size)
         x = start_token
 
 
         sequences = []
-        log_probs = Variable(torch.zeros(batch_size))
+        log_probs = Variable(torch.zeros(batch_size)).to(self.device)
         #print('batch is:',batch_size)
 
         finished = torch.zeros(batch_size).byte()
-        entropy = Variable(torch.zeros(batch_size))
+        entropy = Variable(torch.zeros(batch_size)).to(self.device)
         if torch.cuda.is_available():
             finished = finished.to(self.device)
 
         for step in range(max_length):
             logits, h = self.rnn(x, h)
+            logits = logits.to(self.device)
+            h = h.to(self.device)
             prob = F.softmax(logits)
             log_prob = F.log_softmax(logits)
             x = torch.multinomial(prob, 1).view(-1)
@@ -146,7 +161,7 @@ class RNN():
             # print(log_probs.shape)
             entropy += -torch.sum((log_prob * prob), 1)
 
-            x = Variable(x.data)
+            x = Variable(x.data).to(self.device)
             EOS_sampled = (x == self.voc.vocab['EOS']).data
             finished = torch.ge(finished + EOS_sampled, 1)
             if torch.prod(finished) == 1:

@@ -15,7 +15,6 @@ def Transformer_generator(load_prior_model_from=hy.load_prior_model_from,
                           batch_size=hy.batch_size,
                           n_steps=hy.n_steps,
 
-
                           ):
     voc = Vocabulary(init_from_file=hy.init_from_file)
     voc.special_tokens =hy.special_token
@@ -33,7 +32,8 @@ def Transformer_generator(load_prior_model_from=hy.load_prior_model_from,
     # Saved models are partially on the GPU, but if we dont have cuda enabled we can remap these
     # to the CPU.
     if torch.cuda.is_available():
-        Prior.decodertf.load_state_dict(torch.load(load_prior_model_from, map_location=hy.map_location))
+        #Prior.decodertf.load_state_dict(torch.load(load_prior_model_from, map_location=hy.map_location))
+        Prior.decodertf.load_state_dict(torch.load(load_prior_model_from))
     else:
         Prior.decodertf.load_state_dict(
             torch.load(load_prior_model_from, map_location=lambda storage, loc: storage))

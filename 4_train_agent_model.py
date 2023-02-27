@@ -29,7 +29,13 @@ def train_agent(restore_prior_from=hy.restore_prior_from,
     voc = Vocabulary(init_from_file=hy.init_from_file)
     voc.special_tokens = hy.special_token
     voc.update_attri_values()  # update the words bank
-
+    good_token_list = hy.good_token_list
+    if len(good_token_list) > 0:
+        con_token = []
+        for token in good_token_list:
+            con_token.append(voc.vocab[token])
+        con_token = torch.tensor(con_token).long()
+        #con_token = con_token.expand(batch_size, -1).to(hy.device)
     start_time = time.time()
 
     Prior = RNN(voc,hy.device)
@@ -60,19 +66,31 @@ def train_agent(restore_prior_from=hy.restore_prior_from,
     smiles_save = []
     expericence_step_index = []
     loss_file = hy.save_loss_path
+    
+
+    inaly_record = None
+    init_flag = True
+
     for step in range(n_steps):
 
         # Sample from Agent
-        seqs, agent_likelihood, entropy = Agent.sample(batch_size=batch_size, max_length=hy.max_length)
-
+        seqs, agent_likelihood, entropy = Agent.sample(batch_size=batch_size, max_length=hy.max_length,
+                                                       token_list=hy.good_token_list)
+        #print('sample seq:',seqs)
         # Remove duplicates, ie only consider unique seqs
-        unique_idxs = unique(seqs)
+        unique_idxs = unique(seqs).to(hy.device)
+        #print('unique_idxs:',unique_idxs)
         seqs = seqs[unique_idxs]
         agent_likelihood = agent_likelihood[unique_idxs]
         entropy = entropy[unique_idxs]
 
         # Get prior likelihood and score
-        prior_likelihood = Prior.likelihood(Variable(seqs),hy.len_con)
+        con_token_1 = con_token.expand(len(seqs), -1).to(hy.device)
+        #print('con_token',con_token.size())
+        #print('seqs',seqs.size())
+        seqs_1 = torch.cat((con_token_1,seqs),dim=1)
+        prior_likelihood = Prior.likelihood(Variable(seqs_1),hy.len_con)
+
         smiles = seq_to_smiles(seqs, voc)
         '''
         smiles_1 = []
@@ -89,12 +107,19 @@ def train_agent(restore_prior_from=hy.restore_prior_from,
         all_data['score'] = all_data.iloc[:,1:].sum(axis=1)
         success_score =hy.len_con - 0.0001
         success_data = all_data[all_data.score >= success_score]
-        score = torch.tensor(all_data.iloc[:,1:].sum(axis=1).tolist())
-        print('score',score)
+        score = torch.tensor(all_data['score'].tolist())
+        #print('score',score)
         success_smiles = success_data['SMILES'].tolist()
         if len(success_smiles) > 0:
             record_step = [step for i in range(len(success_smiles))]
             success_data['step'] = record_step
+        
+        if (len(success_smiles) > 0) and init_flag:
+            finaly_record = success_data
+            init_flag = False
+        elif (len(success_smiles) > 0) and (init_flag == False):
+            finaly_record = pd.concat([finaly_record,success_data])
+        
 
         '''
         qed = qed_func()(smiles)
@@ -138,7 +163,7 @@ def train_agent(restore_prior_from=hy.restore_prior_from,
             # save_smiles_df = pd.concat([pd.DataFrame(smiles_save), pd.DataFrame(expericence_step_index)], axis=1)
             #print('mol_dict:',mol_dict)
             if len(success_smiles) > 0:
-                save_smiles_df = success_data
+                save_smiles_df = finaly_record
                 file = f'{step}_MCMG_drd.csv'
                 save_path = os.path.join(save_dir, file)
                 save_smiles_df.to_csv(save_path, index=False, header=True)
@@ -156,14 +181,15 @@ def train_agent(restore_prior_from=hy.restore_prior_from,
             torch.save(Agent.rnn.state_dict(), agent_save)
 
         # Calculate augmented likelihood  #
-        augmented_likelihood = prior_likelihood + sigma * Variable(score)
+        augmented_likelihood = prior_likelihood + sigma * Variable(score).to(hy.device)
         loss = torch.pow((augmented_likelihood - agent_likelihood), 2)
 
         # Experience Replay
         # First sample
         if experience_replay and len(experience) > 4:
             exp_seqs, exp_score, exp_prior_likelihood = experience.sample(4)
-            exp_agent_likelihood, exp_entropy = Agent.likelihood(exp_seqs.long())
+            exp_seqs_1 = torch.cat((con_token,exp_seqs),dim=1)
+            exp_agent_likelihood, exp_entropy = Agent.likelihood(exp_seqs_1.long())
             exp_augmented_likelihood = exp_prior_likelihood + sigma * exp_score
             exp_loss = torch.pow((Variable(exp_augmented_likelihood) - exp_agent_likelihood), 2)
             loss = torch.cat((loss, exp_loss), 0)
